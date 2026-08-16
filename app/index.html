@@ -1,45 +1,202 @@
+<!DOCTYPE html>
 <html lang="en">
-<style>
-    .container {
-        margin: 40px auto;
-        width: 80%;
-    }
- 
-    hr {
-        width: 400px;
-        margin-left: 0;
-    }
-    h3 {
-        display: inline-block;
-    }
-    #static {
-        color: red;
-    }
-    #dynamic {
-        color: green;
-    }
-</style>
-<script>
-    (async function init() {
-        const cont = document.getElementById('container');
-        const response = await fetch('http://localhost:3000/fetch-data', {
-            method: "GET",
-            headers: {
-              'Accept': 'application/json',
-              'Content-Type': 'application/json'
-            }
-        });
-        const jsonResponse = await response.json();
-        document.getElementById('dynamic').textContent = jsonResponse.data;
-    })();
-</script>
+<head>
+    <meta charset="UTF-8">
+    <title>MongoDB User Data</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+        }
+
+        .container {
+            max-width: 700px;
+            margin: auto;
+        }
+
+        input, textarea, button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 8px;
+            margin-bottom: 15px;
+            box-sizing: border-box;
+        }
+
+        button {
+            cursor: pointer;
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f2f2f2;
+        }
+
+        .message {
+            font-weight: bold;
+        }
+    </style>
+</head>
+
 <body>
-    <div class='container' id='container'>
-        <h1>Welcome to this Super Sophisticated App</h1>
-        <span>Some static data:  </span><h3 id="static">this is hard-coded in index.html</h3>
-        <hr />
-        <span>Data from MongoDB:  </span><h3 id="dynamic"></h3>
-        <hr />
-    </div>
+
+<div class="container">
+
+    <h1>User Data Application</h1>
+
+    <h2>Add Data</h2>
+
+    <label>User ID</label>
+    <input
+        type="text"
+        id="userId"
+        placeholder="Enter your ID"
+    >
+
+    <label>Data</label>
+    <textarea
+        id="data"
+        placeholder="Enter the data you want to save"
+    ></textarea>
+
+    <button onclick="addData()">Save Data</button>
+
+    <div id="addMessage" class="message"></div>
+
+
+    <hr>
+
+    <h2>Get Data</h2>
+
+    <label>User ID</label>
+    <input
+        type="text"
+        id="searchUserId"
+        placeholder="Enter ID to search"
+    >
+
+    <button onclick="fetchData()">Get My Data</button>
+
+    <div id="fetchResult" class="result"></div>
+
+</div>
+
+
+<script>
+
+async function addData() {
+
+    const userId = document.getElementById("userId").value;
+    const data = document.getElementById("data").value;
+
+    if (!userId || !data) {
+        document.getElementById("addMessage").textContent =
+            "Please enter both ID and data.";
+
+        return;
+    }
+
+    try {
+
+        const response = await fetch("/add-data", {
+            method: "POST",
+
+            headers: {
+                "Content-Type": "application/json"
+            },
+
+            body: JSON.stringify({
+                userId: userId,
+                data: data
+            })
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+
+            document.getElementById("addMessage").textContent =
+                "Data saved successfully!";
+
+            document.getElementById("data").value = "";
+
+        } else {
+
+            document.getElementById("addMessage").textContent =
+                result.message;
+
+        }
+
+    } catch (error) {
+
+        console.error(error);
+
+        document.getElementById("addMessage").textContent =
+            "Could not connect to server.";
+
+    }
+}
+
+
+async function fetchData() {
+
+    const userId =
+        document.getElementById("searchUserId").value;
+
+    if (!userId) {
+
+        document.getElementById("fetchResult").textContent =
+            "Please enter a user ID.";
+
+        return;
+    }
+
+    try {
+
+        const response =
+            await fetch(`/fetch-data/${encodeURIComponent(userId)}`);
+
+        const result = await response.json();
+
+        if (!response.ok) {
+
+            document.getElementById("fetchResult").textContent =
+                result.message;
+
+            return;
+        }
+
+        if (result.data.length === 0) {
+
+            document.getElementById("fetchResult").textContent =
+                "No data found for this ID.";
+
+            return;
+        }
+
+        document.getElementById("fetchResult").innerHTML =
+            `<h3>Data for ${result.userId}</h3>` +
+            result.data.map(item => `
+                <p>
+                    <strong>Data:</strong> ${item.data}<br>
+                    <strong>Created:</strong>
+                    ${new Date(item.createdAt).toLocaleString()}
+                </p>
+                <hr>
+            `).join("");
+
+    } catch (error) {
+
+        console.error(error);
+
+        document.getElementById("fetchResult").textContent =
+            "Could not connect to server.";
+
+    }
+}
+
+</script>
+
 </body>
 </html>

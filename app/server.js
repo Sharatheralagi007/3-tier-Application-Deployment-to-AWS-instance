@@ -1,53 +1,93 @@
-let express = require('express');
-let path = require('path');
-let fs = require('fs');
-let MongoClient = require('mongodb').MongoClient;
-let bodyParser = require('body-parser');
-let app = express();
+const express = require("express");
+const path = require("path");
 
-const DB_USER = process.env.MONGO_DB_USERNAME
-const DB_PASS = process.env.MONGO_DB_PWD
+const { connectDB, getDB } = require("./db");
 
-app.use(bodyParser.urlencoded({
-  extended: true
-}));
-app.use(bodyParser.json());
+const app = express();
+const PORT = 3000;
 
-app.get('/', function (req, res) {
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+
+// Serve frontend
+app.get("/", (req, res) => {
     res.sendFile(path.join(__dirname, "index.html"));
-  });
+});
 
-// when starting app locally, use "mongodb://admin:password@localhost:27017" URL instead
-let mongoUrlDockerCompose = `mongodb://${DB_USER}:${DB_PASS}@mongodb`;
+// Add data
+app.post("/add-data", async (req, res) => {
+    try {
+        const { userId, data } = req.body;
 
-// pass these options to mongo client connect request to avoid DeprecationWarning for current Server Discovery and Monitoring engine
-let mongoClientOptions = { useNewUrlParser: true, useUnifiedTopology: true };
+        if (!userId || !data) {
+            return res.status(400).json({
+                message: "userId and data are required"
+            });
+        }
 
-// the following db and collection will be created on first connect
-let databaseName = "my-db";
-let collectionName = "my-collection";
+        const db = getDB();
 
-app.get('/fetch-data', function (req, res) {
-  let response = {};
-  MongoClient.connect(mongoUrlDockerCompose, mongoClientOptions, function (err, client) {
-    if (err) throw err;
+        const collection = db.collection("my-collection");
 
-    let db = client.db(databaseName);
+        const document = {
+            userId: userId,
+            data: data,
+            createdAt: new Date()
+        };
 
-    let myquery = { myid: 1 };
+        const result = await collection.insertOne(document);
 
-    db.collection(collectionName).findOne(myquery, function (err, result) {
-      if (err) throw err;
-      response = result;
-      client.close();
+        res.status(201).json({
+            message: "Data saved successfully",
+            id: result.insertedId,
+            data: document
+        });
 
-      // Send response
-      res.send(response ? response : {});
+    } catch (error) {
+        console.error(error);
+
+        res.status(500).json({
+            message: "Failed to save data"
+        });
+    }
+});
+
+// Fetch data by user ID
+app.get("/fetch-data/:userId", async (req, res) => {
+    try {
+        const userId = req.params.userId;
+
+        const db = getDB();
+
+        const collection = db.collection("my-collection");
+
+        const results = await collection
+            .find({ userId: userId })
+            .sort({ createdAt: -1 })
+            .toArray();
+
+        res.json({
+            userId: userId,
+            count: results.length,
+            data: results
+        });
+
+    } catch (error) {
+        console.error(error);
+
+        res.status(500).json({
+            message: "Failed to fetch data"
+        });
+    }
+});
+
+connectDB()
+    .then(() => {
+        app.listen(PORT, () => {
+            console.log(`App listening on port ${PORT}`);
+        });
+    })
+    .catch((error) => {
+        console.error("MongoDB connection failed:", error);
+        process.exit(1);
     });
-  });
-});
-
-app.listen(3000, function () {
-  console.log("app listening on port 3000!");
-});
-
