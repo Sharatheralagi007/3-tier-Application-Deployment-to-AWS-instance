@@ -1,7 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>MongoDB User Data</title>
 
     <style>
@@ -15,7 +19,9 @@
             margin: auto;
         }
 
-        input, textarea, button {
+        input,
+        textarea,
+        button {
             width: 100%;
             padding: 10px;
             margin-top: 8px;
@@ -35,6 +41,7 @@
 
         .message {
             font-weight: bold;
+            margin-bottom: 20px;
         }
     </style>
 </head>
@@ -45,40 +52,62 @@
 
     <h1>User Data Application</h1>
 
+    <!-- Add Data -->
+
     <h2>Add Data</h2>
 
-    <label>User ID</label>
+    <label for="userId">
+        User ID
+    </label>
+
     <input
         type="text"
         id="userId"
         placeholder="Enter your ID"
     >
 
-    <label>Data</label>
+    <label for="data">
+        Data
+    </label>
+
     <textarea
         id="data"
         placeholder="Enter the data you want to save"
     ></textarea>
 
-    <button onclick="addData()">Save Data</button>
+    <button onclick="addData()">
+        Save Data
+    </button>
 
-    <div id="addMessage" class="message"></div>
-
+    <div
+        id="addMessage"
+        class="message"
+    ></div>
 
     <hr>
 
+    <!-- Fetch Data -->
+
     <h2>Get Data</h2>
 
-    <label>User ID</label>
+    <label for="searchUserId">
+        User ID
+    </label>
+
     <input
         type="text"
         id="searchUserId"
         placeholder="Enter ID to search"
     >
 
-    <button onclick="fetchData()">Get My Data</button>
+    <button onclick="fetchData()">
+        Get My Data
+    </button>
 
-    <div id="fetchResult" class="result"></div>
+    <div
+        id="fetchResult"
+        class="result"
+    ></div>
 
 </div>
 
@@ -87,19 +116,33 @@
 
 async function addData() {
 
-    const userId = document.getElementById("userId").value;
-    const data = document.getElementById("data").value;
+    const userId =
+        document.getElementById("userId").value.trim();
+
+    const data =
+        document.getElementById("data").value.trim();
+
+    const messageElement =
+        document.getElementById("addMessage");
+
+
+    // Validate input
 
     if (!userId || !data) {
-        document.getElementById("addMessage").textContent =
+
+        messageElement.textContent =
             "Please enter both ID and data.";
 
         return;
     }
 
+
     try {
 
+        // Send data to backend
+
         const response = await fetch("/add-data", {
+
             method: "POST",
 
             headers: {
@@ -110,93 +153,212 @@ async function addData() {
                 userId: userId,
                 data: data
             })
+
         });
 
-        const result = await response.json();
+
+        const result =
+            await response.json();
+
+
+        // Successful response
 
         if (response.ok) {
 
-            document.getElementById("addMessage").textContent =
+            messageElement.textContent =
                 "Data saved successfully!";
 
             document.getElementById("data").value = "";
 
-        } else {
+        }
 
-            document.getElementById("addMessage").textContent =
-                result.message;
+        // Error response
+
+        else {
+
+            messageElement.textContent =
+                result.message ||
+                "Failed to save data.";
 
         }
 
-    } catch (error) {
+    }
 
-        console.error(error);
+    catch (error) {
 
-        document.getElementById("addMessage").textContent =
+        console.error(
+            "Error:",
+            error
+        );
+
+        messageElement.textContent =
             "Could not connect to server.";
 
     }
+
 }
 
 
 async function fetchData() {
 
     const userId =
-        document.getElementById("searchUserId").value;
+        document
+            .getElementById("searchUserId")
+            .value
+            .trim();
+
+    const resultElement =
+        document.getElementById("fetchResult");
+
+
+    // Validate user ID
 
     if (!userId) {
 
-        document.getElementById("fetchResult").textContent =
+        resultElement.textContent =
             "Please enter a user ID.";
 
         return;
     }
 
+
     try {
 
-        const response =
-            await fetch(`/fetch-data/${encodeURIComponent(userId)}`);
+        // Request data from backend
 
-        const result = await response.json();
+        const response =
+            await fetch(
+                `/fetch-data/${encodeURIComponent(userId)}`
+            );
+
+
+        const result =
+            await response.json();
+
+
+        // Handle backend error
 
         if (!response.ok) {
 
-            document.getElementById("fetchResult").textContent =
-                result.message;
+            resultElement.textContent =
+                result.message ||
+                "Failed to fetch data.";
 
             return;
         }
 
+
+        // No data found
+
         if (result.data.length === 0) {
 
-            document.getElementById("fetchResult").textContent =
+            resultElement.textContent =
                 "No data found for this ID.";
 
             return;
         }
 
-        document.getElementById("fetchResult").innerHTML =
-            `<h3>Data for ${result.userId}</h3>` +
-            result.data.map(item => `
-                <p>
-                    <strong>Data:</strong> ${item.data}<br>
-                    <strong>Created:</strong>
-                    ${new Date(item.createdAt).toLocaleString()}
-                </p>
-                <hr>
-            `).join("");
 
-    } catch (error) {
+        // Clear previous results
 
-        console.error(error);
+        resultElement.innerHTML = "";
 
-        document.getElementById("fetchResult").textContent =
+
+        // Create heading
+
+        const heading =
+            document.createElement("h3");
+
+        heading.textContent =
+            `Data for ${result.userId}`;
+
+        resultElement.appendChild(
+            heading
+        );
+
+
+        // Display each record
+
+        result.data.forEach(item => {
+
+            const paragraph =
+                document.createElement("p");
+
+
+            const dataLabel =
+                document.createElement("strong");
+
+            dataLabel.textContent =
+                "Data: ";
+
+
+            const createdLabel =
+                document.createElement("strong");
+
+            createdLabel.textContent =
+                "Created: ";
+
+
+            paragraph.appendChild(
+                dataLabel
+            );
+
+
+            paragraph.appendChild(
+                document.createTextNode(
+                    item.data
+                )
+            );
+
+
+            paragraph.appendChild(
+                document.createElement("br")
+            );
+
+
+            paragraph.appendChild(
+                createdLabel
+            );
+
+
+            paragraph.appendChild(
+                document.createTextNode(
+                    new Date(
+                        item.createdAt
+                    ).toLocaleString()
+                )
+            );
+
+
+            resultElement.appendChild(
+                paragraph
+            );
+
+
+            resultElement.appendChild(
+                document.createElement("hr")
+            );
+
+        });
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "Error:",
+            error
+        );
+
+        resultElement.textContent =
             "Could not connect to server.";
 
     }
+
 }
 
 </script>
 
 </body>
+
 </html>
